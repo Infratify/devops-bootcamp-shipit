@@ -179,12 +179,13 @@ ROOT="$(git rev-parse --show-toplevel)"
 WF="$ROOT/starter/workflows"
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
-has()  { grep -Fq "$2" "$1" || fail "$(basename "$1"): missing '$2'"; }
+# has() checks existence first so a not-yet-created file gives a clean "missing" message.
+has()  { [ -f "$1" ] || fail "missing $1"; grep -Fq "$2" "$1" || fail "$(basename "$1"): missing '$2'"; }
 
-for n in 1 2 3 4; do
-  f="$WF/deploy.cicd$n.yml"
-  [ -f "$f" ] || fail "missing $f"
-  # cheap YAML sanity: parses under python3 or ruby if available; else skip
+# YAML-validity / actionlint over whatever answer keys exist at this stage (glob, not a fixed 1..4
+# list) — so this same script is correct at Task 2 (cicd1..2 present) and Task 3 (cicd1..4 present).
+for f in "$WF"/deploy.cicd*.yml; do
+  [ -e "$f" ] || continue
   if command -v python3 >/dev/null 2>&1 && python3 -c 'import yaml' 2>/dev/null; then
     python3 -c "import yaml,sys; yaml.safe_load(open('$f'))" || fail "$(basename "$f"): invalid YAML"
   fi
