@@ -13,6 +13,8 @@ let view = makeView(shouldUseFallback({ gl, reducedMotion: mql.matches }));
 
 function showLiftoff(callsign) {
   if (!toasts) return;
+  // Cap the stack so a class-end launch burst can't run toasts off-screen over the scene.
+  while (toasts.children.length >= 5) toasts.firstChild.remove();
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = `LIFTOFF ✦ @${callsign}`;
