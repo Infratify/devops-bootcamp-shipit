@@ -17,8 +17,8 @@ export function createScene(container, { onLiftoff } = {}) {
   scene.fog = new THREE.FogExp2(PALETTE.bg, 0.02);
 
   const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-  const CAM = new THREE.Vector3(0, 3.2, 9.5);
-  const LOOK = new THREE.Vector3(0, 1.8, 0);
+  const CAM = new THREE.Vector3(0, 6.5, 10);
+  const LOOK = new THREE.Vector3(0, 2.2, 0);
   camera.position.copy(CAM); camera.lookAt(LOOK);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true }); // opaque — bloom needs it
