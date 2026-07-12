@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { createShip } from './ship-mesh.js';
+import { createShip, setEmissiveBoost, setTrail, setGrounded } from './ship-mesh.js';
 import { placement } from './placement.js';
-import { PALETTE, LAYOUT, BLOOM } from './theme.js';
+import { orbitAngle } from './orbit.js';
+import { launchPhase, isComplete, easeInCubic, easeInOutCubic } from './launch.js';
+import { PALETTE, LAYOUT, BLOOM, LAUNCH, DAMP_K } from './theme.js';
 
 const { PAD_Y, ORBIT_Y, ORBIT_R, GRID_SIZE, GRID_DIV, ASCEND_COLS, ASCEND_GAP } = LAYOUT;
 
@@ -44,8 +46,11 @@ export function createScene(container, { onLiftoff } = {}) {
   composer.addPass(bloom);
   composer.setSize(container.clientWidth, container.clientHeight);
 
-  const ships = new Map(); // callsign -> { group, data, index }
+  const ships = new Map(); // callsign -> { group, data, index, pos, lastZone, launch }
   let angle = 0;
+  let elapsedMs = 0;
+  const clock = new THREE.Clock();
+  const tmp = new THREE.Vector3();
 
   function update(list) {
     const seen = new Set();
@@ -56,34 +61,97 @@ export function createScene(container, { onLiftoff } = {}) {
         if (rec) { scene.remove(rec.group); disposeObject3D(rec.group); }
         const group = createShip({ callsign: s.callsign, color: s.color });
         scene.add(group);
-        rec = { group };
+        rec = { group, pos: null, lastZone: undefined, launch: null };
         ships.set(s.callsign, rec);
       }
       rec.data = s; rec.index = i;
+
+      const zone = placement(s).zone;
+      if (zone !== rec.lastZone) setGrounded(rec.group, zone === 'grounded');
+      // Launch ONLY on a live observed transition into orbit (rec.pos set = we
+      // saw it before). A ship first seen already in orbit snaps in (pos===null).
+      if (rec.pos && rec.lastZone && rec.lastZone !== 'orbit' && zone === 'orbit' && !rec.launch) {
+        rec.launch = { startMs: elapsedMs, from: rec.pos.clone(), toasted: false };
+      }
+      // Abort mid-launch → cancel the beat.
+      if (rec.launch && zone === 'grounded') {
+        rec.launch = null; setTrail(rec.group, false); setEmissiveBoost(rec.group, rec.group.userData.baseEmissive);
+      }
+      rec.lastZone = zone;
     });
     for (const [callsign, rec] of ships) {
       if (!seen.has(callsign)) { scene.remove(rec.group); disposeObject3D(rec.group); ships.delete(callsign); }
     }
   }
 
-  // NOTE: placeholder positioning — replaced by the movement engine in Task 6.
-  function place(rec, total) {
+  // Orbiting ships, ordered stably by callsign → deterministic even-spacing slots.
+  function orbitingIndex() {
+    const orbiting = [...ships.values()]
+      .filter((r) => placement(r.data).zone === 'orbit')
+      .sort((a, b) => (a.data.callsign < b.data.callsign ? -1 : 1));
+    const map = new Map();
+    orbiting.forEach((r, i) => map.set(r.data.callsign, i));
+    return { map, count: orbiting.length };
+  }
+
+  function targetFor(rec, orbitIdx, orbitingCount, out) {
     const { zone, t } = placement(rec.data);
     if (zone === 'orbit') {
-      const a = angle + (rec.index / Math.max(1, total)) * Math.PI * 2;
-      rec.group.position.set(Math.cos(a) * ORBIT_R, ORBIT_Y, Math.sin(a) * ORBIT_R);
-    } else {
-      const col = rec.index % ASCEND_COLS, row = Math.floor(rec.index / ASCEND_COLS);
-      rec.group.position.set((col - (ASCEND_COLS - 1) / 2) * ASCEND_GAP, PAD_Y + t * (ORBIT_Y - PAD_Y), row * ASCEND_GAP - 1);
+      const a = orbitAngle(orbitIdx, orbitingCount, angle);
+      return out.set(Math.cos(a) * ORBIT_R, ORBIT_Y, Math.sin(a) * ORBIT_R);
     }
+    const col = rec.index % ASCEND_COLS, row = Math.floor(rec.index / ASCEND_COLS);
+    const x = (col - (ASCEND_COLS - 1) / 2) * ASCEND_GAP, z = row * ASCEND_GAP - 1;
+    if (zone === 'grounded') return out.set(x, PAD_Y + 0.15, z);
+    return out.set(x, PAD_Y + t * (ORBIT_Y - PAD_Y), z);
+  }
+
+  // The launch beat: charge (dip + glow + ignite) → thrust (rise past orbit) →
+  // arc (over into the orbit slot). `slot` is the ship's even-spaced orbit target.
+  function applyLaunch(rec, slot) {
+    const le = elapsedMs - rec.launch.startMs;
+    const ph = launchPhase(le);
+    const from = rec.launch.from;
+    const base = rec.group.userData.baseEmissive;
+    if (ph.phase === 'charge') {
+      rec.pos.set(from.x, from.y - LAUNCH.CROUCH_Y * Math.sin(ph.f * Math.PI), from.z);
+      setEmissiveBoost(rec.group, base + ph.f * 1.2);
+      setTrail(rec.group, true, 0.3 + ph.f * 0.4);
+    } else if (ph.phase === 'thrust') {
+      if (!rec.launch.toasted) { onLiftoff?.(rec.data.callsign, rec.data.color); rec.launch.toasted = true; }
+      rec.pos.set(from.x, from.y + (LAUNCH.APEX_Y - from.y) * easeInCubic(ph.f), from.z);
+      setEmissiveBoost(rec.group, base + 1.4);
+      setTrail(rec.group, true, 1);
+    } else if (ph.phase === 'arc') {
+      const e = easeInOutCubic(ph.f);
+      rec.pos.set(
+        from.x + (slot.x - from.x) * e,
+        LAUNCH.APEX_Y + (slot.y - LAUNCH.APEX_Y) * e,
+        from.z + (slot.z - from.z) * e,
+      );
+      setEmissiveBoost(rec.group, base + (1 - ph.f) * 1.4);
+      setTrail(rec.group, true, 1 - ph.f);
+    }
+    if (isComplete(le)) { rec.launch = null; setTrail(rec.group, false); setEmissiveBoost(rec.group, base); }
   }
 
   let raf = 0;
-  const clock = new THREE.Clock();
   function tick() {
-    angle += clock.getDelta() * 0.15;
-    const total = ships.size;
-    for (const rec of ships.values()) place(rec, total);
+    const dt = clock.getDelta();
+    elapsedMs += dt * 1000;
+    angle += dt * 0.15;
+    camera.position.set(CAM.x + Math.sin(elapsedMs * 0.00005) * 0.35, CAM.y, CAM.z); // slow idle drift
+    camera.lookAt(LOOK);
+
+    const { map, count } = orbitingIndex();
+    const damp = 1 - Math.exp(-DAMP_K * dt);
+    for (const rec of ships.values()) {
+      targetFor(rec, map.get(rec.data.callsign) ?? 0, count, tmp);
+      if (!rec.pos) rec.pos = tmp.clone();          // snap on first sight
+      else if (rec.launch) applyLaunch(rec, tmp);   // scripted beat overrides damping
+      else rec.pos.lerp(tmp, damp);                 // ease toward target — no teleports
+      rec.group.position.copy(rec.pos);
+    }
     composer.render();
     raf = requestAnimationFrame(tick);
   }
