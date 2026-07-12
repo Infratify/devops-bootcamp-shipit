@@ -127,6 +127,7 @@ export function createScene(container, { onLiftoff } = {}) {
       pad.geometry.dispose(); pad.material.dispose();
       ring.geometry.dispose(); ring.material.dispose();
       composer.dispose();
+      bloom.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },
