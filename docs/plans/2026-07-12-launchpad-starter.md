@@ -180,7 +180,8 @@ WF="$ROOT/starter/workflows"
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 # has() checks existence first so a not-yet-created file gives a clean "missing" message.
-has()  { [ -f "$1" ] || fail "missing $1"; grep -Fq "$2" "$1" || fail "$(basename "$1"): missing '$2'"; }
+# `--` terminates grep option parsing so patterns beginning with `-` (e.g. `-p 3000:3000`) match literally.
+has()  { [ -f "$1" ] || fail "missing $1"; grep -Fq -- "$2" "$1" || fail "$(basename "$1"): missing '$2'"; }
 
 # YAML-validity / actionlint over whatever answer keys exist at this stage (glob, not a fixed 1..4
 # list) — so this same script is correct at Task 2 (cicd1..2 present) and Task 3 (cicd1..4 present).
