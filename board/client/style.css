@@ -1,11 +1,47 @@
-:root { color-scheme: dark; }
-html, body { margin: 0; height: 100%; background: #0b1020; overflow: hidden; font-family: system-ui, sans-serif; color: #dbeafe; }
+:root {
+  --bg: #0b1220; --cyan: #38f5c9; --cyan2: #22d3ee; --text: #7dd3fc;
+  --panel: rgba(11, 18, 32, 0.55); --line: rgba(56, 245, 201, 0.35);
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+/* DOM chrome is theme-aware; the 3D stage stays a dark projector scene. */
+@media (prefers-color-scheme: light) {
+  :root { --panel: rgba(255, 255, 255, 0.7); --text: #0b3a5b; --line: rgba(8, 58, 91, 0.3); }
+}
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; font-family: var(--mono); color: var(--text); }
 #app { position: fixed; inset: 0; }
-#hud { position: fixed; top: 14px; left: 16px; z-index: 2; }
-#hud h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .5px; }
-#hud .count { opacity: .7; font-size: 14px; }
-.roster { position: fixed; inset: 56px 16px 16px; overflow: auto; display: grid; gap: 6px; align-content: start; }
-.roster .row { display: flex; align-items: center; gap: 10px; font-size: 15px; }
-.roster .chip { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
-.roster .cs { font-weight: 600; }
-.roster .st { opacity: .7; }
+
+#hud {
+  position: fixed; top: 14px; left: 16px; z-index: 2;
+  padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); backdrop-filter: blur(6px);
+}
+#hud h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--cyan); }
+#hud .count { opacity: .8; font-size: 14px; margin-top: 2px; }
+#hud .legend { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; font-size: 12px; opacity: .85; }
+#hud .legend li { display: flex; align-items: center; gap: 7px; }
+#hud .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.legend .pad { background: #64748b; }
+.legend .asc { background: var(--cyan2); }
+.legend .orb { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+.legend .gnd { background: #f0505a; }
+
+/* LIFTOFF toasts — corner stack; reduced-motion users never see the scene, but
+   guard anyway so the transition degrades to an instant show/hide. */
+#toasts { position: fixed; top: 14px; right: 16px; z-index: 3; display: grid; gap: 8px; justify-items: end; }
+.toast {
+  font-size: 15px; font-weight: 700; letter-spacing: 1px; color: var(--cyan);
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); backdrop-filter: blur(6px);
+  opacity: 0; transform: translateY(-6px); transition: opacity .3s ease, transform .3s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* plain-list fallback (no-WebGL / reduced-motion) — restyled, still motion-free */
+.roster { position: fixed; inset: 120px 16px 16px; overflow: auto; display: grid; gap: 6px; align-content: start; }
+.roster .row { display: flex; align-items: center; gap: 10px; font-size: 16px; padding: 4px 8px; border-left: 2px solid var(--line); }
+.roster .chip { width: 14px; height: 14px; border-radius: 3px; display: inline-block; box-shadow: 0 0 6px currentColor; }
+.roster .cs { font-weight: 700; }
+.roster .st { opacity: .8; }
+.roster .st-passed, .roster .st-shipped { color: var(--cyan); }
+.roster .st-failed, .roster .st-aborted { color: #f0505a; }

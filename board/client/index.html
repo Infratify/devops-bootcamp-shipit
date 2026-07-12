@@ -6,7 +6,17 @@
     <title>Mission Control — Ship It</title>
   </head>
   <body>
-    <div id="hud"><h1>Mission Control</h1><div class="count" id="count">0 ships</div></div>
+    <div id="hud">
+      <h1>Mission&nbsp;Control</h1>
+      <div class="count" id="count">0 ships</div>
+      <ul class="legend" aria-hidden="true">
+        <li><span class="dot pad"></span>pad</li>
+        <li><span class="dot asc"></span>ascending</li>
+        <li><span class="dot orb"></span>orbit</li>
+        <li><span class="dot gnd"></span>grounded</li>
+      </ul>
+    </div>
+    <div id="toasts" aria-live="polite"></div>
     <div id="app"></div>
     <script type="module" src="./main.js"></script>
   </body>
