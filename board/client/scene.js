@@ -73,9 +73,13 @@ export function createScene(container, { onLiftoff } = {}) {
       if (rec.pos && rec.lastZone && rec.lastZone !== 'orbit' && zone === 'orbit' && !rec.launch) {
         rec.launch = { startMs: elapsedMs, from: rec.pos.clone(), toasted: false };
       }
-      // Abort mid-launch → cancel the beat.
-      if (rec.launch && zone === 'grounded') {
-        rec.launch = null; setTrail(rec.group, false); setEmissiveBoost(rec.group, rec.group.userData.baseEmissive);
+      // Interruption mid-launch (abort, or a re-run dropping back to pad/ascending)
+      // → cancel the beat. When the new zone is grounded, the setGrounded() above
+      // already applied the red glow, so only restore the base emissive otherwise.
+      if (rec.launch && zone !== 'orbit') {
+        rec.launch = null;
+        setTrail(rec.group, false);
+        if (zone !== 'grounded') setEmissiveBoost(rec.group, rec.group.userData.baseEmissive);
       }
       rec.lastZone = zone;
     });
