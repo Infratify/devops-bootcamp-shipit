@@ -6,7 +6,7 @@
 
 **Architecture:** Add the only genuinely-new content (four progressive `deploy.yml` end-states, a learner README, a per-session command doc) under `starter/` + `docs/`, then a `release-launchpad.sh` that assembles `main` + `cicd1..4` with git plumbing (payload from `launchpad/`, board from `board/`), and a `verify-fork-sync.sh` that proves the load-bearing payload-only-`main` discipline with local git (0 conflicts). Nothing is pushed; publish is a deferred `--push` run.
 
-**Tech Stack:** GitHub Actions YAML, bash (`set -euo pipefail`), `rsync`, `git` plumbing, `jq`/`node` for small JSON edits, `curl` (event contract). Node 20.
+**Tech Stack:** GitHub Actions YAML, bash (`set -euo pipefail`), `tar` (portable tree copy), `git` plumbing, `jq`/`node` for small JSON edits, `curl` (event contract). Node 20.
 
 ## Global Constraints
 
@@ -702,12 +702,13 @@ for n in 1 2 3 4; do [ -f "$WF/deploy.cicd$n.yml" ] || { echo "missing $WF/deplo
 [ -f "$ROOT/starter/README.learner.md" ] || { echo "missing starter/README.learner.md" >&2; exit 1; }
 
 # --- stage the payload-only main tree ---
+# Uses tar (universally present; no rsync dependency for a tool instructors/CI will run).
+# Copy the ship payload skipping the heavy build dirs, then strip dev/monorepo cruft precisely.
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
-rsync -a --delete \
-  --exclude 'node_modules' --exclude 'dist' \
-  --exclude 'pnpm-lock.yaml' --exclude 'pnpm-workspace.yaml' \
-  --exclude '*.test.mjs' --exclude '__fixtures__' \
-  "$ROOT/launchpad/" "$STAGE/"
+tar -C "$ROOT/launchpad" --exclude='./node_modules' --exclude='./dist' -cf - . | tar -C "$STAGE" -xf -
+rm -f "$STAGE/pnpm-lock.yaml" "$STAGE/pnpm-workspace.yaml"
+find "$STAGE" -name '*.test.mjs' -delete
+find "$STAGE" -type d -name '__fixtures__' -prune -exec rm -rf {} +
 cp "$ROOT/starter/README.learner.md" "$STAGE/README.md"
 # drop the dev-only test:unit script from package.json (Node, no jq dependency)
 node -e 'const fs=require("fs"),f=process.argv[1],p=JSON.parse(fs.readFileSync(f));delete p.scripts["test:unit"];fs.writeFileSync(f,JSON.stringify(p,null,2)+"\n")' "$STAGE/package.json"
@@ -719,7 +720,7 @@ git -C "$OUT" config user.email "bootcamp@infratify.dev"
 git -C "$OUT" config user.name  "Ship It release"
 
 commit_tree() { git -C "$OUT" add -A && git -C "$OUT" commit -q -m "$1"; }
-sync_into()   { rsync -a --delete --exclude '.git' "$1" "$OUT/"; }
+sync_into()   { tar -C "$1" -cf - . | tar -C "$OUT" -xf -; }   # copy tree contents into OUT, keeping .git
 
 # main
 git -C "$OUT" checkout -q -b main
@@ -739,7 +740,8 @@ done
 # cicd4: workflow + the board/ payload (the black box they build)
 git -C "$OUT" checkout -q -b cicd4 cicd3
 cp "$WF/deploy.cicd4.yml" "$OUT/.github/workflows/deploy.yml"
-rsync -a --exclude 'node_modules' --exclude 'dist' "$ROOT/board/" "$OUT/board/"
+mkdir -p "$OUT/board"
+tar -C "$ROOT/board" --exclude='./node_modules' --exclude='./dist' -cf - . | tar -C "$OUT/board" -xf -
 commit_tree "cicd4: session 4 answer key + board/ (build & ship it)"
 
 git -C "$OUT" checkout -q main
