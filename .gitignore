@@ -7,3 +7,6 @@ dist/
 playwright-report/
 test-results/
 .playwright-cli/
+
+# M5: local output of scripts/release-launchpad.sh
+.launchpad-release/
