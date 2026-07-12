@@ -12,7 +12,9 @@ You **forked** this repo. Across four sessions you will **author the pipeline yo
 1. **Fork** this repo (you've done this).
 2. **Enable Actions** on your fork once: the **Actions** tab → *I understand my workflows, go ahead
    and enable them*.
-3. Each session, edit files and `git push`, then watch the **Actions** tab.
+3. **Add the upstream remote** once, so you can reach the answer keys:
+   `git remote add upstream https://github.com/Infratify/shipit-launchpad && git fetch upstream`.
+4. Each session, edit files and `git push`, then watch the **Actions** tab.
 
 Stuck? The `cicd1`…`cicd4` branches are the answer keys — `git diff upstream/cicd1` to compare, or
 reset to one if you're lost. **Sync fork** to pull instructor fixes.

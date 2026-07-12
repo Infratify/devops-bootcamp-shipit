@@ -886,4 +886,9 @@ git commit -m "feat(starter): verify-fork-sync.sh proves 0-conflict fork sync (M
 - Enabling branch protection / making it "fork-friendly"; a real fork-sync smoke on GitHub.
 - Multi-arch GHCR publish of `shipit-board` + promoting `release-launchpad.sh` to a release workflow.
 - **Known teaching simplification to note on slides:** the S4 SSM command interpolates `SHIPIT_TOKEN` into the RunShellScript parameters (visible in AWS command history) — acceptable for the prop; a SecureString param would harden it.
+
+**Whole-branch review follow-ups (Minor; deferred, none block the source merge):**
+- **Pre-class live dry-run of S4** against a throwaway EC2 to shake out (a) the `aws ssm send-command --parameters commands="[...]"` shorthand with space/`||`/`-p` in the docker commands, and (b) the private-GHCR-first-push ordering (package is private on first push → make public → re-run). Spec §7 keeps live EC2/Pages proof out of M5 scope.
+- **Run `actionlint` once** before publishing (not installed in the build env this session) — `verify-workflows.sh` runs it automatically when present, exercising the expression/shellcheck pass beyond the PyYAML validity + grep-shape checks.
+- **Optional hardening:** pass the POST `color` via `env: COLOR:` and reference `$COLOR` in the curl body (as spec §4.3 sketches) instead of inlining `${{ steps.cfg.outputs.color }}` — self-only risk on the learner's own runner, so left as-is for now.
 ```

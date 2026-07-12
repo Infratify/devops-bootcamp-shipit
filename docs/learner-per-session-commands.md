@@ -7,6 +7,9 @@ session. Answer keys = the `cicd1..4` branches.
 ## Setup (before S1)
 - **Fork** `Infratify/shipit-launchpad`.
 - **Enable Actions** on the fork (Actions tab → enable). One-time click.
+- **Add the upstream remote** (needed for the answer keys + the S4 `board/` pull; GitHub's *Sync fork*
+  button does **not** create a local `upstream`):
+  `git remote add upstream https://github.com/Infratify/shipit-launchpad && git fetch upstream`.
 
 ## S1 — a pipeline deploys on push
 - Edit `ship.config.json` (your callsign is your GitHub username, set automatically).
@@ -33,8 +36,10 @@ session. Answer keys = the `cicd1..4` branches.
   - `gh variable set EC2_INSTANCE_ID --body "i-0123456789abcdef0"`   (your EC2 from AWS-2)
 - Add the `ship` job to `deploy.yml` → `git push`.
 - The pipeline builds `board/`, pushes `ghcr.io/<you>/shipit-board`, and SSM-deploys it to your EC2.
-- Make the GHCR package **public** (Packages → shipit-board → Package settings → Change visibility) so
-  the EC2 can pull it.
+- **First run only:** the new GHCR package is **private** by default, so your EC2 can't pull it yet —
+  make it **public** (Packages → shipit-board → Package settings → Change visibility), then re-run the
+  workflow. (`aws ssm send-command` dispatches the deploy fire-and-forget: a green run means "command
+  sent", so give the container a few seconds to pull and start.)
 - Open `http://<your-ec2>:3000` — your own Mission Control. **LIFTOFF.**
 
 ## Catch-up (any session)
