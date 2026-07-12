@@ -20,9 +20,9 @@ export function createFallback(container) {
     update(ships) {
       el.innerHTML = ships.map((s) => `
         <div class="row">
-          <span class="chip" style="background:${escapeHtml(s.color)}"></span>
+          <span class="chip" style="background:${escapeHtml(s.color)};color:${escapeHtml(s.color)}"></span>
           <span class="cs">@${escapeHtml(s.callsign)}</span>
-          <span class="st">${escapeHtml(s.stage)} · ${escapeHtml(s.status)}</span>
+          <span class="st st-${escapeHtml(s.status)}">${escapeHtml(s.stage)} · ${escapeHtml(s.status)}</span>
         </div>`).join('');
     },
     dispose() { el.remove(); },
