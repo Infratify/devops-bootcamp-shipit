@@ -4,7 +4,10 @@ jobs:
   say-hello:
     runs-on: ubuntu-latest
     steps:
-      - run: sleep 30   # beri masa tonton run
-      - run: echo "Ship it!"
-      - run: echo "Dicetus manual!"
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+      - uses: actions/deploy-pages@v5
