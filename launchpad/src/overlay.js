@@ -11,4 +11,5 @@ export function renderOverlay(root, params, callsign) {
     <p class="callsign">${callsign ? '@' + escapeHtml(callsign) : 'callsign set at launch'}</p>
   `;
   root.append(el);
+  return el;
 }

@@ -17,6 +17,12 @@ if (shouldUseFallback({ gl, reducedMotion })) {
   const stage = document.createElement('div');
   stage.className = 'stage';
   app.append(stage);
-  createScene(stage, ship);
-  renderOverlay(app, ship, callsign);
+  createScene(stage, ship, {
+    onError() {
+      stage.remove();
+      overlay.remove();
+      renderFallback(app, ship, callsign, 'Model failed to load — showing static view.');
+    },
+  });
+  const overlay = renderOverlay(app, ship, callsign);
 }

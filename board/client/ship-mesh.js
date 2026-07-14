@@ -1,22 +1,37 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PALETTE } from './theme.js';
+import { SHIPS, hueOf } from '../src/ships.js';
 
-// A tiny procedural rocket + a canvas-texture callsign label, tuned for a
-// bloomed projector scene. The label + trail carry textures/materials, so
-// scene.js's dispose must cascade (it does — disposeObject3D traverses the group).
-export function createShip({ callsign, color }) {
+// Preload every ship GLB once; return id -> template Object3D. Templates own the
+// shared geometry + textures; per-ship clones own only their cloned materials.
+export function preloadShipTemplates() {
+  const loader = new GLTFLoader();
+  return Promise.all(
+    SHIPS.map((s) => loader.loadAsync(import.meta.env.BASE_URL + s.file).then((g) => [s.id, g.scene])),
+  ).then((pairs) => new Map(pairs));
+}
+
+export function createShip({ callsign, color, shipModel, template }) {
   const group = new THREE.Group();
-  const tint = new THREE.Color(color);
-  const mat = new THREE.MeshStandardMaterial({
-    color: tint, metalness: 0.3, roughness: 0.45,
-    emissive: tint.clone(), emissiveIntensity: 0.35, // low glow → blooms
-  });
+  const model = template.clone(true);
+  fitByMaxDimension(model, 0.8);
 
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.5, 16), mat);
-  group.add(body);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.24, 16), mat);
-  nose.position.y = 0.37;
-  group.add(nose);
+  const tint = new THREE.Color(color);
+  const hue = hueOf(color); // target hue fraction [0,1), or null for a greyscale colour
+  let mat = null; // the model's material — the launch beat drives its emissive
+  model.traverse((node) => {
+    if (node.isMesh && node.material) {
+      node.userData.sharedGeometry = true;      // geometry belongs to the template — never dispose it
+      node.material = node.material.clone();     // per-ship material...
+      node.material.userData.keepTextures = true; // ...but its map textures are shared with the template
+      node.material.emissive = tint.clone();
+      node.material.emissiveIntensity = 0.35;   // low glow → blooms, same as the old rocket
+      applyHueShift(node.material, hue);
+      if (!mat) mat = node.material;
+    }
+  });
+  group.add(model);
 
   // Exhaust trail — additive so it blooms; hidden until launch.
   const trailMat = new THREE.MeshBasicMaterial({
@@ -25,7 +40,7 @@ export function createShip({ callsign, color }) {
   });
   const trail = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.6, 12), trailMat);
   trail.position.y = -0.55;
-  trail.rotation.x = Math.PI; // taper points down, away from the nose
+  trail.rotation.x = Math.PI;
   trail.visible = false;
   group.add(trail);
 
@@ -33,12 +48,12 @@ export function createShip({ callsign, color }) {
   label.position.y = 0.72;
   group.add(label);
 
-  group.userData = { callsign, color, mat, trail, baseEmissive: 0.35 };
+  group.userData = { callsign, color, shipModel, mat, trail, baseEmissive: 0.35 };
   return group;
 }
 
 export function setEmissiveBoost(group, intensity) {
-  group.userData.mat.emissiveIntensity = intensity;
+  if (group.userData.mat) group.userData.mat.emissiveIntensity = intensity;
 }
 
 export function setTrail(group, on, scale = 1) {
@@ -50,8 +65,59 @@ export function setTrail(group, on, scale = 1) {
 
 export function setGrounded(group, on) {
   const { mat, baseEmissive, color } = group.userData;
+  if (!mat) return;
   mat.emissive.set(on ? PALETTE.grounded : color);
   mat.emissiveIntensity = on ? 0.6 : baseEmissive;
+}
+
+// SET every saturated texel's hue to `hueFrac` ([0,1)), in-shader, after the
+// base-colour texture is sampled. Setting (not rotating) lands exactly on the
+// chosen colour on any model — the 4 ships share one atlas with no base hue.
+// Greys/blacks (saturation ~0) stay neutral. Null hueFrac → leave the paint.
+// MUST match launchpad/src/scene.js's applyHueShift verbatim.
+function applyHueShift(material, hueFrac) {
+  if (hueFrac == null) return;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uHue = { value: hueFrac };
+    shader.fragmentShader =
+      `uniform float uHue;
+       vec3 rgb2hsv(vec3 c) {
+         vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+         vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+         vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+         float d = q.x - min(q.w, q.y);
+         float e = 1.0e-10;
+         return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+       }
+       vec3 hsv2rgb(vec3 c) {
+         vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+         vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+       }
+       ` +
+      shader.fragmentShader.replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+         {
+           vec3 hsv = rgb2hsv(diffuseColor.rgb);
+           hsv.x = uHue;
+           diffuseColor.rgb = hsv2rgb(hsv);
+         }`,
+      );
+  };
+  material.needsUpdate = true;
+}
+
+function fitByMaxDimension(object3d, target) {
+  const box = new THREE.Box3().setFromObject(object3d);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+  const max = Math.max(size.x, size.y, size.z);
+  const scale = max > 0 ? target / max : 1;
+  object3d.scale.setScalar(scale);
+  object3d.position.sub(center.multiplyScalar(scale));
 }
 
 // Projector-legible: big canvas, white fill with a dark stroke so the callsign

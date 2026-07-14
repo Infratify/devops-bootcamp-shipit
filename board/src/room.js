@@ -1,4 +1,5 @@
 // The in-memory roster + event sanitizer. Pure and node-testable.
+import { SHIP_IDS, DEFAULT_SHIP } from './ships.js';
 
 export const STAGES = ['pad', 'build', 'test', 'clearance', 'liftoff'];
 export const STATUSES = ['running', 'passed', 'failed', 'aborted', 'shipped'];
@@ -31,6 +32,7 @@ export function sanitizeEvent(raw) {
     stage: raw.stage,
     status: raw.status,
     color: COLOR_RE.test(raw.color) ? raw.color : DEFAULT_COLOR,
+    shipModel: SHIP_IDS.includes(raw.shipModel) ? raw.shipModel : DEFAULT_SHIP,
   };
   const version = cleanStr(raw.version, 40);
   if (version) entry.version = version;

@@ -32,3 +32,10 @@ test('exits 1 when the file is missing, surfacing the underlying cause', () => {
   assert.match(r.stderr, /ABORT/);
   assert.match(r.stderr, /ENOENT/); // the OS error, not just "cannot read"
 });
+
+test('exits 1 with ABORT on an unknown shipModel', () => {
+  const r = run(fixture('bad-model.json'));
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /ABORT/);
+  assert.match(r.stderr, /shipModel/);
+});

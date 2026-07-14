@@ -70,3 +70,16 @@ test('malformed / invalid event → 400', async () => {
     assert.equal((await post(port, { callsign: 'x', stage: 'nope', status: 'passed' })).status, 400);
   } finally { await app.close(); }
 });
+
+test('POST shipModel survives into the ws roster', async () => {
+  const app = createServer({ port: 0, token: null });
+  const port = app.port;
+  try {
+    const spectator = await openClient(port);
+    await nextMsg(spectator, (m) => m.t === 'roster');
+    await post(port, { ...ev, shipModel: 'interceptor' });
+    const roster = await nextMsg(spectator, (m) => m.t === 'roster' && m.ships.some((s) => s.callsign === 'octocat'));
+    assert.equal(roster.ships.find((s) => s.callsign === 'octocat').shipModel, 'interceptor');
+    spectator.close();
+  } finally { await app.close(); }
+});

@@ -24,8 +24,9 @@ Distinct from its siblings (do not blur them):
 - **One repo, one growing workflow.** Each learner keeps ONE repo across all four sessions; the
   workflow file *grows* (Pages deploy → build/test gate → secrets/approval → build & ship the board
   container to their own EC2). Four throwaway projects would kill the "watch it mature" payoff.
-- **Personal identity in a shared world.** Every ship is customized (callsign, colour, emblem),
-  so the shared orbit is 60 distinct ships, not 60 identical ones — the reason the arena landed.
+- **Personal identity in a shared world.** Every ship is customized (callsign, colour, model,
+  emblem), so the shared orbit is 60 distinct ships, not 60 identical ones — the reason the arena
+  landed.
 - **Felt-need spine.** Each session automates last week's manual step; the ship visibly gets
   closer to orbit as the pipeline does more of the work.
 
@@ -63,8 +64,10 @@ already did `docker build` + ECR by hand in the AWS sessions — S4 *automates t
 The one integration point. Keep it stable; slides and the reference workflows depend on it.
 
 - **Identity** = the learner's GitHub username (`${{ github.actor }}`), used as `callsign`.
-- **Config** the board needs comes from the learner's `ship.config.json` (`color`, `emblem`);
-  `shipName` is a cosmetic label, not identity.
+- **Config** the board needs comes from the learner's `ship.config.json`: `color` (sets the ship's
+  hue — every saturated texel takes that hue; greys/blacks stay neutral — and drives the UI accent)
+  and `shipModel` (which of the 4 ships the board renders in orbit); `shipName` is a cosmetic label,
+  not identity.
 - **Transport:** each workflow stage POSTs one event to the board.
 
 ```
@@ -76,7 +79,8 @@ Content-Type: application/json
   "callsign": "octocat",          // GitHub username
   "stage":    "build",            // pad | build | test | clearance | liftoff
   "status":   "passed",           // running | passed | failed | aborted | shipped
-  "color":    "#22d3ee",          // from the learner's ship.config.json
+  "color":    "#22d3ee",          // from the learner's ship.config.json; sets the ship's hue
+  "shipModel":"fighter",          // from ship.config.json: fighter · interceptor · hauler · scout
   "version":  "v3",               // optional; image/site tag (for rollback demo)
   "siteUrl":  "https://…"         // optional; the live deployed site to link from orbit
 }
@@ -94,10 +98,14 @@ Content-Type: application/json
 
 Frozen — slides quote these verbatim.
 
-- **Config file** learners edit: `ship.config.json` → `{ shipName, color, emblem }`.
-  - `shipName` non-empty ≤ 24 chars · `color` hex `/^#[0-9a-fA-F]{6}$/` · `emblem` ∈
+- **Config file** learners edit: `ship.config.json` → `{ shipName, color, shipModel, emblem }`.
+  - `shipName` non-empty ≤ 24 chars · `color` hex `/^#[0-9a-fA-F]{6}$/` (recolours the ship — sets
+    its hue to `color`; every saturated texel takes that hue, greys/blacks stay neutral — and drives
+    the UI accent) · `shipModel` ∈ `fighter · interceptor · hauler · scout` · `emblem` ∈
     `comet · bolt · star · ring · delta · phoenix`. `callsign` is **not** in config — it's the GitHub
     username, injected via `VITE_CALLSIGN` at build.
+  - The ship is one of four low-poly spaceships (Quaternius, CC0), hue-set by `color`; the site and
+    board both render whichever `shipModel` the learner picked.
 - **The S2 fitness gate** is a config **validation** check (not a unit test): `npm test` →
   `node scripts/preflight.mjs` validates `ship.config.json` and **exits non-zero (ABORT)** on a bad
   config (unparseable, bad hex, unknown emblem, over-long name). Teaches the *exit-code gate* (a
@@ -106,6 +114,9 @@ Frozen — slides quote these verbatim.
   (each = the full correct state at that session's end); slides lift the `deploy.yml` from them.
 - **Per-session commands** (kelas-taip-bersama): fork → author `deploy.yml` step-by-step per session →
   `git push` → watch. Full list in the spec §7.
+- **Slides drift note:** the bootcamp slides repo (`~/repo/slides-devops-bootcamp`) quotes the two
+  PINNED contracts above verbatim — it is a separate repo and is **not** updated by changes here;
+  update it by hand whenever these contracts change.
 
 ## PINNED — learner distribution (fork, not template)
 
