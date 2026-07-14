@@ -1,8 +1,21 @@
 name: deploy
 on: [push, workflow_dispatch]
 jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - run: apt update -y
+  say-nosleep:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello No Sleep!"
   say-hello:
     runs-on: ubuntu-latest
     steps:
-      - run: sleep 60
-      - run: echo "Ship it!"
+      - run: sleep 5
+      - run: echo "Hello!"
+  say-goodbye:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 5
+      - run: echo "Goodbye!"
