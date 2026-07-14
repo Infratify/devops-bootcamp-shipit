@@ -6,5 +6,6 @@ jobs:
     steps:
       - run: sleep 30
       - run: echo "Ship it!"
+      - run: echo "Nailed it!"
 
 
