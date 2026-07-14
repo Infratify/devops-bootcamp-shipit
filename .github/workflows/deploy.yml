@@ -1,0 +1,11 @@
+name: deploy
+
+on: [push]
+
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: sleep 60
+      - run: echo "Ship it!"
