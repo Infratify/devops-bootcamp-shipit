@@ -1,5 +1,6 @@
 name: deploy
 on: [push, workflow_dispatch]
+
 jobs:
   say-hello:
     runs-on: ubuntu-latest
@@ -15,3 +16,8 @@ jobs:
         with:
           path: launchpad/dist
       - uses: actions/deploy-pages@v5
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
