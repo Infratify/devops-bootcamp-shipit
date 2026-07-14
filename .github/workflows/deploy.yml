@@ -5,5 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: sleep 30   # beri masa tonton run
-      - run: echo Ship it!
-      - run: echo "Dicetus ${{ github.event_name }}"
+      - run: echo "Ship it!"
+      - run: echo "Dicetus manual!"
+        if: ${{ github.event_name == 'workflow_dispatch' }}
