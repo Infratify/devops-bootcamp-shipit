@@ -1,0 +1,8 @@
+# .github/workflows/deploy.yml
+on: [push, workflow_dispatch]
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 30   # beri masa tonton run
+      - run: echo "Ship it!"
