@@ -1,6 +1,7 @@
 import { ship } from './config.js';
 import { createScene } from './scene.js';
 import { renderOverlay } from './overlay.js';
+import { renderTelemetry } from './telemetry.js';
 import { shouldUseFallback, detectWebGL, renderFallback } from './fallback.js';
 import './style.css';
 
@@ -17,6 +18,15 @@ if (shouldUseFallback({ gl, reducedMotion })) {
   const stage = document.createElement('div');
   stage.className = 'stage';
   app.append(stage);
-  createScene(stage, ship);
-  renderOverlay(app, ship, callsign);
+  let overlay, telemetry;
+  createScene(stage, ship, {
+    onError() {
+      stage.remove();
+      overlay?.remove();
+      telemetry?.remove();
+      renderFallback(app, ship, callsign, 'Model failed to load — showing static view.');
+    },
+  });
+  overlay = renderOverlay(app, ship, callsign);
+  telemetry = renderTelemetry(app, ship, callsign);
 }

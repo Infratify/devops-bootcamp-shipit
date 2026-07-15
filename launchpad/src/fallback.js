@@ -1,5 +1,6 @@
 import { emblemSvg } from './emblems.js';
 import { escapeHtml } from './dom.js';
+import { renderTelemetry } from './telemetry.js';
 
 export function shouldUseFallback({ gl, reducedMotion }) {
   return !gl || !!reducedMotion;
@@ -14,7 +15,7 @@ export function detectWebGL() {
   }
 }
 
-export function renderFallback(root, params, callsign) {
+export function renderFallback(root, params, callsign, note = 'Static view — motion off (reduced-motion or no WebGL).') {
   const el = document.createElement('div');
   el.className = 'fallback';
   el.style.setProperty('--ship-color', params.color);
@@ -23,7 +24,8 @@ export function renderFallback(root, params, callsign) {
     <h1 class="ship-name">${escapeHtml(params.shipName)}</h1>
     <p class="callsign">${callsign ? '@' + escapeHtml(callsign) : 'callsign set at launch'}</p>
     <div class="swatch"></div>
-    <p class="note">Static view — motion off (reduced-motion or no WebGL).</p>
+    <p class="note">${note}</p>
   `;
   root.append(el);
+  renderTelemetry(root, params, callsign); // same readout as the live view (reduced-motion parity)
 }

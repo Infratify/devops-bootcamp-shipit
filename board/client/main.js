@@ -24,7 +24,14 @@ function showLiftoff(callsign) {
 }
 
 function makeView(useFallback) {
-  const v = useFallback ? createFallback(app) : createScene(app, { onLiftoff: showLiftoff });
+  const v = useFallback ? createFallback(app) : createScene(app, {
+    onLiftoff: showLiftoff,
+    onPreloadError: () => {
+      view.dispose();
+      view = createFallback(app);
+      view.update(lastShips);
+    },
+  });
   v.update(lastShips);
   return v;
 }

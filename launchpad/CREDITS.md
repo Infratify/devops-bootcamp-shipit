@@ -1,7 +1,11 @@
 # Credits
 
-## 3D assets
+The four ship models are by **Quaternius**, released **CC0 1.0 (public domain)** via
+[poly.pizza](https://poly.pizza). CC0 requires no attribution; this note is courtesy.
 
-- **`public/rocket.glb`** — "Minimal Cartoon Rocketship" by Gambsmoore, from Poly Pizza
-  (https://poly.pizza/m/dsjkFYy-rb0). Licensed CC-BY 3.0
-  (https://creativecommons.org/licenses/by/3.0/). Attribution required — keep this line.
+| in-app id | source |
+|---|---|
+| `fighter`     | https://poly.pizza/m/uCeLfsdmNP |
+| `interceptor` | https://poly.pizza/m/Jqfed124pQ |
+| `hauler`      | https://poly.pizza/m/VSxUAFhzbA |
+| `scout`       | https://poly.pizza/m/u105mYHLHU |

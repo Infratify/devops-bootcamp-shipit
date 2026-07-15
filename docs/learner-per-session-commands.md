@@ -12,7 +12,8 @@ session. Answer keys = the `cicd1..4` branches.
   `git remote add upstream https://github.com/Infratify/shipit-launchpad && git fetch upstream`.
 
 ## S1 — a pipeline deploys on push
-- Edit `ship.config.json` (your callsign is your GitHub username, set automatically).
+- Edit `ship.config.json` (your callsign is your GitHub username, set automatically) — pick your
+  `shipModel` (`fighter` · `interceptor` · `hauler` · `scout`) and `color`; `color` recolours it.
 - Author `.github/workflows/deploy.yml` (type-along) — the S1 Pages deploy.
 - `git commit -am "my ship" && git push` → watch **Actions** → open the Pages URL.
 

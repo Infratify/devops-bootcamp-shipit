@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { createShip, setEmissiveBoost, setTrail, setGrounded } from './ship-mesh.js';
+import { createShip, setEmissiveBoost, setTrail, setGrounded, preloadShipTemplates } from './ship-mesh.js';
 import { placement } from './placement.js';
 import { orbitAngle } from './orbit.js';
 import { launchPhase, isComplete, easeInCubic, easeInOutCubic } from './launch.js';
@@ -11,7 +11,7 @@ import { PALETTE, LAYOUT, BLOOM, LAUNCH, DAMP_K } from './theme.js';
 
 const { PAD_Y, ORBIT_Y, ORBIT_R, GRID_SIZE, GRID_DIV, ASCEND_COLS, ASCEND_GAP } = LAYOUT;
 
-export function createScene(container, { onLiftoff } = {}) {
+export function createScene(container, { onLiftoff, onPreloadError } = {}) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PALETTE.bg);
   scene.fog = new THREE.FogExp2(PALETTE.bg, 0.02);
@@ -47,19 +47,24 @@ export function createScene(container, { onLiftoff } = {}) {
   composer.setSize(container.clientWidth, container.clientHeight);
 
   const ships = new Map(); // callsign -> { group, data, index, pos, lastZone, launch }
+  let templates = null;      // id -> template Object3D, once preloaded
+  let pendingList = null;    // roster that arrived before templates were ready
+  let disposed = false;      // guards the in-flight preload promise against a torn-down scene
   let angle = 0;
   let elapsedMs = 0;
   const clock = new THREE.Clock();
   const tmp = new THREE.Vector3();
 
   function update(list) {
+    if (!templates) { pendingList = list; return; }   // buffer until preloaded
     const seen = new Set();
     list.forEach((s, i) => {
       seen.add(s.callsign);
       let rec = ships.get(s.callsign);
-      if (!rec || rec.data.color !== s.color) {
-        if (rec) { scene.remove(rec.group); disposeObject3D(rec.group); }
-        const group = createShip({ callsign: s.callsign, color: s.color });
+      if (!rec || rec.data.color !== s.color || rec.data.shipModel !== s.shipModel) {
+        if (rec) { scene.remove(rec.group); disposeShip(rec.group); }
+        const template = templates.get(s.shipModel) || templates.get('fighter');
+        const group = createShip({ callsign: s.callsign, color: s.color, shipModel: s.shipModel, template });
         scene.add(group);
         rec = { group, pos: null, lastZone: undefined, launch: null };
         ships.set(s.callsign, rec);
@@ -84,7 +89,7 @@ export function createScene(container, { onLiftoff } = {}) {
       rec.lastZone = zone;
     });
     for (const [callsign, rec] of ships) {
-      if (!seen.has(callsign)) { scene.remove(rec.group); disposeObject3D(rec.group); ships.delete(callsign); }
+      if (!seen.has(callsign)) { scene.remove(rec.group); disposeShip(rec.group); ships.delete(callsign); }
     }
   }
 
@@ -187,13 +192,25 @@ export function createScene(container, { onLiftoff } = {}) {
   }
   renderer.domElement.addEventListener('click', onClick);
 
+  preloadShipTemplates().then((t) => {
+    if (disposed) return;
+    templates = t;
+    if (pendingList) { const l = pendingList; pendingList = null; update(l); }
+  }).catch((err) => {
+    if (disposed) return;
+    console.error('ship model preload failed', err);
+    onPreloadError?.(err);
+  });
+
   return {
     update,
     dispose() {
+      disposed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('click', onClick);
-      for (const rec of ships.values()) { scene.remove(rec.group); disposeObject3D(rec.group); }
+      for (const rec of ships.values()) { scene.remove(rec.group); disposeShip(rec.group); }
+      if (templates) for (const tpl of templates.values()) disposeObject3D(tpl);
       ships.clear();
       grid.geometry.dispose(); grid.material.dispose();
       pad.geometry.dispose(); pad.material.dispose();
@@ -221,4 +238,23 @@ function disposeMaterial(material) {
   if (!material) return;
   for (const value of Object.values(material)) if (value?.isTexture) value.dispose();
   material.dispose();
+}
+
+// A ship clone shares the template's geometry + textures; disposing those would
+// break sibling clones. createShip flags cloned-model nodes: node.userData
+// .sharedGeometry and material.userData.keepTextures. Skip those; dispose the
+// rest (the trail + the callsign label the clone uniquely owns).
+function disposeShip(group) {
+  group.traverse((node) => {
+    if (!node.isMesh && !node.isSprite) return;
+    if (node.geometry && !node.userData.sharedGeometry) node.geometry.dispose();
+    const mats = Array.isArray(node.material) ? node.material : [node.material];
+    for (const m of mats) {
+      if (!m) continue;
+      if (!m.userData.keepTextures) {
+        for (const v of Object.values(m)) if (v?.isTexture) v.dispose();
+      }
+      m.dispose();
+    }
+  });
 }

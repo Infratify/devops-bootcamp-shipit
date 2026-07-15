@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sanitizeEvent, Roster, DEFAULT_COLOR } from '../src/room.js';
+import { DEFAULT_SHIP } from '../src/ships.js';
 
-const base = { callsign: 'octocat', stage: 'build', status: 'passed', color: '#22d3ee' };
+const base = { callsign: 'octocat', stage: 'build', status: 'passed', color: '#22d3ee', shipModel: 'scout' };
 
 test('sanitizeEvent accepts a well-formed event', () => {
   assert.deepEqual(sanitizeEvent(base), base);
@@ -20,9 +21,10 @@ test('sanitizeEvent rejects unknown stage/status', () => {
   assert.equal(sanitizeEvent({ ...base, status: 'exploded' }), null);
 });
 
-test('sanitizeEvent defaults a bad colour, keeps a good one', () => {
-  assert.equal(sanitizeEvent({ ...base, color: 'blue' }).color, DEFAULT_COLOR);
+test('sanitizeEvent defaults a bad colour, keeps a good one, resolves a named one', () => {
+  assert.equal(sanitizeEvent({ ...base, color: 'blurple' }).color, DEFAULT_COLOR);
   assert.equal(sanitizeEvent({ ...base, color: '#ABCDEF' }).color, '#ABCDEF');
+  assert.equal(sanitizeEvent({ ...base, color: 'blue' }).color, '#3b82f6'); // name → hex
 });
 
 test('sanitizeEvent keeps http(s) siteUrl, drops anything else', () => {
@@ -47,4 +49,17 @@ test('Roster upserts latest-wins by callsign', () => {
   r.upsert(sanitizeEvent({ ...base, stage: 'liftoff', status: 'shipped' }));
   assert.equal(r.size, 1);
   assert.equal(r.list()[0].stage, 'liftoff');
+});
+
+test('sanitizeEvent keeps a known shipModel', () => {
+  assert.equal(sanitizeEvent({ ...base, shipModel: 'hauler' }).shipModel, 'hauler');
+});
+
+test('sanitizeEvent defaults an unknown shipModel', () => {
+  assert.equal(sanitizeEvent({ ...base, shipModel: 'battlecruiser' }).shipModel, DEFAULT_SHIP);
+});
+
+test('sanitizeEvent defaults a missing shipModel', () => {
+  const { shipModel, ...noModel } = base;
+  assert.equal(sanitizeEvent(noModel).shipModel, DEFAULT_SHIP);
 });
