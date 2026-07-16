@@ -1,6 +1,7 @@
 {
-  "shipName": "Darkveda Runner",
-  "color": "#ffb6c1",
-  "shipModel": "scout",
+  "shipName": "Nebula Runner",
+  "color": "22d3ee",
+  "shipModel": "fighter",
   "emblem": "comet"
 }
+
