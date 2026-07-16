@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
 
     defaults:
@@ -37,6 +37,10 @@ jobs:
 
       - name: Build website
         run: npm run build
+        
+      - name: Run tests
+        run: npm run test
+        
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
