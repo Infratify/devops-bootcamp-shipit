@@ -1,0 +1,10 @@
+:root { color-scheme: dark; }
+body { margin: 0; background: #0b1220; color: #e2e8f0; font: 16px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+#cockpit { max-width: 640px; margin: 0 auto; padding: 2rem 1rem; display: flex; flex-direction: column; gap: 1rem; }
+#status { color: #94a3b8; margin: 0; }
+#track { position: relative; height: 10px; background: #1e293b; border-radius: 999px; }
+#me { position: absolute; top: -3px; left: 0; width: 16px; height: 16px; border-radius: 50%; background: #22d3ee; transition: left 0.15s ease; }
+#prompt { font-size: 1.6rem; margin: 0; padding: 0.75rem 1rem; background: #111a2e; border-radius: 8px; min-height: 2rem; }
+#entry { font: inherit; font-size: 1.2rem; padding: 0.75rem 1rem; background: #0f172a; color: #e2e8f0; border: 2px solid #334155; border-radius: 8px; }
+#entry:focus { outline: none; border-color: #22d3ee; }
+#entry:disabled { opacity: 0.5; }
