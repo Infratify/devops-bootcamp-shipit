@@ -5,12 +5,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { Roster, sanitizeEvent } from './room.js';
-import { parse, rosterMsg } from './messages.js';
+import { parse, rosterMsg, raceMsg } from './messages.js';
+import { Race } from './race.js';
+import { pickPrompts } from './corpus.js';
 
 const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
+  '.glb': 'model/gltf-binary',
 };
 
 function send(ws, msg) { try { if (ws.readyState === 1) ws.send(msg); } catch { /* ignore */ } }
@@ -33,10 +36,20 @@ function readBody(req, limit = 64 * 1024) {
   });
 }
 
-export function createServer({ port = 3000, token = null, publicDir = DIST } = {}) {
+export function createServer({ port = 3000, token = null, operatorKey = null, publicDir = DIST } = {}) {
   const roster = new Roster();
+  const race = new Race({ total: 12 });
   const clients = new Set();
-  let dirty = false;
+  let view = 'orbit';        // projector view: 'orbit' | 'race'
+  let session = 'cicd3';
+  let dirty = false;         // roster changed
+  let raceDirty = false;     // race state or view changed
+
+  // Operator-guarded control endpoints. When operatorKey is null, open (dev).
+  function operate(req, res, fn) {
+    if (operatorKey && !authorized(req, operatorKey)) return json(res, 401, { error: 'unauthorized' });
+    return fn();
+  }
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -47,6 +60,27 @@ export function createServer({ port = 3000, token = null, publicDir = DIST } = {
         roster.upsert(event);
         dirty = true;
         return json(res, 202, { ok: true });
+      }
+      if (req.method === 'POST' && req.url === '/api/race/start') {
+        const body = parse(await readBody(req)) || {};
+        return operate(req, res, () => {
+          if (body.session) session = String(body.session);
+          race.start(pickPrompts(session, race.total));
+          raceDirty = true;
+          return json(res, 202, { ok: true });
+        });
+      }
+      if (req.method === 'POST' && req.url === '/api/race/reset') {
+        await readBody(req);
+        return operate(req, res, () => { race.reset(); raceDirty = true; return json(res, 202, { ok: true }); });
+      }
+      if (req.method === 'POST' && req.url === '/api/view') {
+        const body = parse(await readBody(req)) || {};
+        return operate(req, res, () => {
+          if (body.view === 'orbit' || body.view === 'race') view = body.view;
+          raceDirty = true;
+          return json(res, 202, { ok: true });
+        });
       }
       // static: serve the Vite-built client
       let rel = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -62,27 +96,33 @@ export function createServer({ port = 3000, token = null, publicDir = DIST } = {
   const wss = new WebSocketServer({ server });
   wss.on('connection', (ws) => {
     clients.add(ws);
-    // Snapshot goes out on the next dirty-tick rather than synchronously here:
-    // a same-tick send can land in the same TCP read as the WS handshake
-    // response, racing the client's own post-'open' listener setup.
-    dirty = true;
+    dirty = true; raceDirty = true; // snapshot on next tick (see room note)
+    ws.on('message', (buf) => {
+      let m; try { m = JSON.parse(buf.toString()); } catch { return; }
+      if (m.t === 'join' && typeof m.callsign === 'string') {
+        if (!roster.has(m.callsign)) return send(ws, JSON.stringify({ t: 'denied', reason: 'not-on-roster' }));
+        ws.callsign = m.callsign;
+        race.join(m.callsign);
+        raceDirty = true;
+      } else if (m.t === 'progress' && ws.callsign && Number.isInteger(m.completed)) {
+        race.progress(ws.callsign, m.completed);
+        raceDirty = true;
+      }
+    });
     const drop = () => clients.delete(ws);
     ws.on('close', drop);
     ws.on('error', drop);
-    // spectators are read-only; inbound messages ignored
   });
 
   const tick = setInterval(() => {
-    if (!dirty) return;
-    dirty = false;
-    const msg = rosterMsg(roster.list());
-    for (const ws of clients) send(ws, msg);
+    if (dirty) { dirty = false; const msg = rosterMsg(roster.list()); for (const ws of clients) send(ws, msg); }
+    if (raceDirty) { raceDirty = false; const msg = raceMsg(race.snapshot(), view, clients.size, roster); for (const ws of clients) send(ws, msg); }
   }, 50);
 
   server.listen(port);
   return {
     get port() { const a = server.address(); return a && typeof a === 'object' ? a.port : port; },
-    roster, server, wss,
+    roster, race, server, wss,
     close() { clearInterval(tick); wss.close(); return new Promise((r) => server.close(r)); },
   };
 }
