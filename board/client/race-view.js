@@ -1,6 +1,6 @@
 // board/client/race-view.js
 import * as THREE from 'three';
-import { createShip, preloadShipTemplates } from './ship-mesh.js';
+import { createShip, preloadShipTemplates, disposeShip, disposeObject3D } from './ship-mesh.js';
 import { trackPosition } from './track.js';
 import { PALETTE } from './theme.js';
 
@@ -53,7 +53,7 @@ export function createRaceView(container) {
       seen.add(s.callsign);
       let rec = ships.get(s.callsign);
       if (!rec || rec.data.color !== s.color || rec.data.shipModel !== s.shipModel) {
-        if (rec) scene.remove(rec.group);
+        if (rec) { scene.remove(rec.group); disposeShip(rec.group); }
         const template = templates.get(s.shipModel) || templates.get('fighter');
         const group = createShip({ callsign: s.callsign, color: s.color || '#94a3b8', shipModel: s.shipModel, template });
         group.rotation.y = Math.PI / 2; // nose down the track (+x)
@@ -65,7 +65,7 @@ export function createRaceView(container) {
       rec.target = trackPosition(s.completed || 0, s.total || 12, lanes.get(s.callsign) || 0);
     });
     for (const [callsign, rec] of ships) {
-      if (!seen.has(callsign)) { scene.remove(rec.group); ships.delete(callsign); }
+      if (!seen.has(callsign)) { scene.remove(rec.group); disposeShip(rec.group); ships.delete(callsign); }
     }
   }
 
@@ -104,8 +104,9 @@ export function createRaceView(container) {
       disposed = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
-      for (const rec of ships.values()) scene.remove(rec.group);
+      for (const rec of ships.values()) { scene.remove(rec.group); disposeShip(rec.group); }
       ships.clear();
+      if (templates) for (const tpl of templates.values()) disposeObject3D(tpl);
       finish.geometry.dispose(); finish.material.dispose();
       renderer.dispose();
       renderer.domElement.remove();

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { createShip, setEmissiveBoost, setTrail, setGrounded, preloadShipTemplates } from './ship-mesh.js';
+import { createShip, setEmissiveBoost, setTrail, setGrounded, preloadShipTemplates, disposeShip, disposeObject3D } from './ship-mesh.js';
 import { placement } from './placement.js';
 import { orbitAngle } from './orbit.js';
 import { launchPhase, isComplete, easeInCubic, easeInOutCubic } from './launch.js';
@@ -221,40 +221,4 @@ export function createScene(container, { onLiftoff, onPreloadError } = {}) {
       renderer.domElement.remove();
     },
   };
-}
-
-// Texture-cascading dispose — carried from launchpad M1. Label sprite + trail
-// carry a texture/material, so this cascade is load-bearing.
-function disposeObject3D(obj) {
-  obj.traverse((node) => {
-    if (node.isMesh || node.isSprite) {
-      node.geometry?.dispose?.();
-      const mats = Array.isArray(node.material) ? node.material : [node.material];
-      for (const m of mats) disposeMaterial(m);
-    }
-  });
-}
-function disposeMaterial(material) {
-  if (!material) return;
-  for (const value of Object.values(material)) if (value?.isTexture) value.dispose();
-  material.dispose();
-}
-
-// A ship clone shares the template's geometry + textures; disposing those would
-// break sibling clones. createShip flags cloned-model nodes: node.userData
-// .sharedGeometry and material.userData.keepTextures. Skip those; dispose the
-// rest (the trail + the callsign label the clone uniquely owns).
-function disposeShip(group) {
-  group.traverse((node) => {
-    if (!node.isMesh && !node.isSprite) return;
-    if (node.geometry && !node.userData.sharedGeometry) node.geometry.dispose();
-    const mats = Array.isArray(node.material) ? node.material : [node.material];
-    for (const m of mats) {
-      if (!m) continue;
-      if (!m.userData.keepTextures) {
-        for (const v of Object.values(m)) if (v?.isTexture) v.dispose();
-      }
-      m.dispose();
-    }
-  });
 }
