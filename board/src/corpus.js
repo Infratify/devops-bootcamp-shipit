@@ -15,7 +15,7 @@ export const CORPUS = {
     'gh variable set BOARD_URL', 'gh secret list', 'gh workflow view',
   ],
   docker: [
-    'docker build -t', 'docker run -d -p 3000:3000 app', 'docker ps -a', 'docker pull nginx',
+    'docker build -t app .', 'docker run -d -p 3000:3000 app', 'docker ps -a', 'docker pull nginx',
     'docker logs -f app', 'docker exec -it app sh', 'docker stop app', 'docker push app', 'docker compose up -d',
   ],
   aws: [

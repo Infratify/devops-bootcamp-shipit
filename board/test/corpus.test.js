@@ -5,7 +5,7 @@ import { CORPUS, SESSIONS, pool, pickPrompts } from '../src/corpus.js';
 test('pool flattens the unlocked tools for a session', () => {
   const p = pool('cicd3');
   assert.ok(p.includes('git status'));
-  assert.ok(p.includes('docker build -t'));
+  assert.ok(p.includes('docker build -t app .'));
   assert.equal(p.length, SESSIONS.cicd3.reduce((n, k) => n + CORPUS[k].length, 0));
 });
 

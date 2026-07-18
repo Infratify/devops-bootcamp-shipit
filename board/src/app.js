@@ -7,7 +7,7 @@ import { WebSocketServer } from 'ws';
 import { Roster, sanitizeEvent } from './room.js';
 import { parse, rosterMsg, raceMsg } from './messages.js';
 import { Race } from './race.js';
-import { pickPrompts } from './corpus.js';
+import { pickPrompts, SESSIONS } from './corpus.js';
 
 const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const MIME = {
@@ -64,7 +64,9 @@ export function createServer({ port = 3000, token = null, operatorKey = null, pu
       if (req.method === 'POST' && req.url === '/api/race/start') {
         const body = parse(await readBody(req)) || {};
         return operate(req, res, () => {
-          if (body.session) session = String(body.session);
+          const s = body.session ? String(body.session) : session;
+          if (!SESSIONS[s]) return json(res, 400, { error: 'unknown session' });
+          session = s;
           race.start(pickPrompts(session, race.total));
           raceDirty = true;
           return json(res, 202, { ok: true });
@@ -97,7 +99,7 @@ export function createServer({ port = 3000, token = null, operatorKey = null, pu
   const wss = new WebSocketServer({ server });
   wss.on('connection', (ws) => {
     clients.add(ws);
-    dirty = true; raceDirty = true; // snapshot on next tick (see room note)
+    dirty = true; raceDirty = true; // send the roster + race snapshot on the next tick
     ws.on('message', (buf) => {
       let m; try { m = JSON.parse(buf.toString()); } catch { return; }
       if (m.t === 'join' && typeof m.callsign === 'string') {

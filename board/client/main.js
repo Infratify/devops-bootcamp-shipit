@@ -1,6 +1,7 @@
 import './style.css';
 import { createScene } from './scene.js';
 import { createRaceView } from './race-view.js';
+import { createRaceFallback } from './race-fallback.js';
 import { createFallback, detectWebGL, shouldUseFallback } from './fallback.js';
 
 const app = document.getElementById('app');
@@ -36,18 +37,23 @@ function makeOrbit(useFallback) {
   return v;
 }
 
+function makeRace() {
+  const v = shouldUseFallback({ gl, reducedMotion: mql.matches }) ? createRaceFallback(app) : createRaceView(app);
+  v.update(lastRaceShips);
+  return v;
+}
+
 function setMode(next) {
   if (next === mode) return;
   view.dispose();
   mode = next;
-  if (mode === 'race') { view = createRaceView(app); view.update(lastRaceShips); if (hud) hud.hidden = false; }
+  if (mode === 'race') { view = makeRace(); if (hud) hud.hidden = false; }
   else { view = makeOrbit(shouldUseFallback({ gl, reducedMotion: mql.matches })); if (hud) hud.hidden = true; }
 }
 
 mql.addEventListener('change', (e) => {
-  if (mode !== 'orbit') return;
   view.dispose();
-  view = makeOrbit(shouldUseFallback({ gl, reducedMotion: e.matches }));
+  view = mode === 'race' ? makeRace() : makeOrbit(shouldUseFallback({ gl, reducedMotion: e.matches }));
 });
 window.addEventListener('pagehide', () => view.dispose());
 
