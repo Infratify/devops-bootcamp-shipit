@@ -15,6 +15,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export function createRaceTrack(container, { me = null } = {}) {
   const root = document.createElement('div');
   root.className = 'race-track';
+  if (me) root.dataset.me = '1';
   const banner = document.createElement('div');
   banner.className = 'race-banner';
   const rowsEl = document.createElement('div');
@@ -111,7 +112,10 @@ export function createRaceTrack(container, { me = null } = {}) {
       r.meta.textContent = s.finishedAt != null
         ? `✦ #${rk.get(s.callsign)}`
         : `${((s.completed || 0) + (s.frac || 0)).toFixed(1)}/${total}`;
-      r.el.style.order = String(i); // alphabetical slot, whatever the DOM insertion order was
+      // Alphabetical slot, whatever the DOM insertion order was — except the
+      // cockpit's own ship, pinned to the bottom so it sits right above the
+      // typing dock (your ship moves where your eyes already are).
+      r.el.style.order = me && s.callsign === me ? String(order.length) : String(i);
     });
     for (const [callsign, r] of rows) {
       if (!seen.has(callsign)) { r.el.remove(); rows.delete(callsign); }

@@ -35,6 +35,10 @@
 .race-row { flex: 1 1 0; min-height: 10px; max-height: 48px; display: flex; align-items: center; gap: 0.5rem; }
 .race-row.me { flex-grow: 2; max-height: 64px; }
 .race-row.me .cs { color: var(--accent); font-weight: 700; }
+/* Cockpit: the own-ship row is pinned last (see race-track.js) — margin-top
+   auto hugs it to the bottom edge, right above the typing dock, with a thin
+   rule splitting it from the pack. */
+.race-track[data-me] .race-row.me { margin-top: auto; border-top: 1px solid var(--lane-bg); padding-top: 4px; }
 
 .race-row .rank { width: 2ch; text-align: right; color: var(--dim); font-size: 0.85em; }
 .race-row .cs { width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -62,7 +62,10 @@ Same `{ update, dispose }` shape as every other view so `main.js` swaps it freel
 - **Responsive to 40+.** Rows are `flex: 1 1 0` with `min-height` ≈ 10px and `max-height` ≈ 48px,
   so 40 rows split any viewport evenly with no scrolling. Font sizes `clamp()`ed; the callsign
   label hides in dense mode, which triggers at 25+ racers (full name stays as `title`). The `me` row gets
-  `flex-grow: 2` plus accent highlight so it stays findable at any density.
+  `flex-grow: 2` plus accent highlight so it stays findable at any density — and on the
+  cockpit it is pinned to the BOTTOM of the stack (margin-top auto + last flex order),
+  directly above the typing dock, so your ship moves where your eyes already are. The
+  projector (no `me`) stays fully alphabetical.
 - **Motion.** Ship position `left: calc(p × (100% − sprite width))` where
   `p = progressOf(completed, frac, total)`. CSS `transition: left 150ms linear`; with ~10 Hz
   fractional updates this reads as continuous gliding. `prefers-reduced-motion: reduce` disables
