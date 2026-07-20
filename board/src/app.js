@@ -93,6 +93,7 @@ export function createServer({ port = 3000, token = null, operatorKey = null, pu
       // static: serve the Vite-built client
       let rel = decodeURIComponent((req.url || '/').split('?')[0]);
       if (rel === '/play') rel = '/play.html';
+      if (rel === '/operator') rel = '/operator.html';
       if (rel === '/' || rel === '') rel = '/index.html';
       const file = path.join(publicDir, path.normalize(rel));
       if (!file.startsWith(publicDir)) { res.writeHead(403); return res.end('forbidden'); }

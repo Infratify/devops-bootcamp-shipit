@@ -12,6 +12,6 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
-    rollupOptions: { input: { main: r('client/index.html'), play: r('client/play.html') } },
+    rollupOptions: { input: { main: r('client/index.html'), play: r('client/play.html'), operator: r('client/operator.html') } },
   },
 });
