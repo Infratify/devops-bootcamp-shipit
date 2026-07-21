@@ -174,3 +174,11 @@ test('a completion still advances position regardless of wpm', () => {
   r.start(prompts(3));
   assert.equal(r.report('octocat', 1, 0, 40).completed, 1); // wpm does not block advance
 });
+
+test('report clamps wpm to a sane ceiling', () => {
+  const r = new Race({ total: 3 });
+  r.join('octocat');
+  r.start(prompts(3));
+  r.report('octocat', 0, 0.5, 1e15);
+  assert.equal(r.snapshot().ships[0].wpm, 999);
+});

@@ -47,7 +47,7 @@ export class Race {
     if (this.phase !== 'running') return null;
     const r = this.racers.get(callsign);
     if (!r) return null;
-    if (Number.isFinite(wpm)) r.wpm = Math.max(0, Math.round(wpm));
+    if (Number.isFinite(wpm)) r.wpm = Math.min(999, Math.max(0, Math.round(wpm)));
     if (completed === r.completed + 1) return this.progress(callsign, completed);
     if (completed === r.completed) r.frac = clamp01(frac);
     return r;

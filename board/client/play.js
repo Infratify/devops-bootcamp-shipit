@@ -24,6 +24,7 @@ let currentTarget = null;
 let startAt = null;       // cockpit-local clock; stamped on the go transition
 let charsAtStart = 0;     // baseline: chars already done when the clock started (reload-safe)
 let wpmTimer = null;      // ticks the own readout while running (idle decay is local-only)
+let finalWpm = null;      // frozen personal-finish WPM; overrides the live clock once you land
 const wpmEl = document.getElementById('wpm');
 
 const muteBtn = document.getElementById('mute');
@@ -40,10 +41,11 @@ const correctChars = () => prompts.slice(0, completed).reduce((n, p) => n + p.le
 const myWpm = () => computeWpm({ correctChars: correctChars(), charsAtStart, startAt, now: Date.now() });
 
 function renderWpm() {
-  const w = myWpm();
+  const w = finalWpm != null ? finalWpm : myWpm();
   wpmEl.textContent = w == null ? '' : `${w} WPM`;
 }
 function startWpmClock() {
+  finalWpm = null;
   startAt = Date.now();
   charsAtStart = correctChars();
   clearInterval(wpmTimer);
@@ -120,6 +122,7 @@ function connect() {
       // during a running round, keep the local optimistic `completed`; the server silently rejects bad progress
       if (m.phase === 'running' && prevPhase !== 'running') { sfx.go(); startWpmClock(); }
       if (m.phase !== 'running') stopWpmClock();
+      if (m.phase === 'idle') { startAt = null; finalWpm = null; } // reset: chip blanks until next go
       prevPhase = m.phase;
       track.update({ phase: m.phase, total: m.total, ships: m.ships || [] });
       render();
@@ -159,7 +162,7 @@ function connect() {
       entry.value = '';
       ws.send(JSON.stringify({ t: 'progress', completed, wpm: myWpm() ?? 0 }));
       track.boost(callsign);
-      if (completed >= prompts.length) sfx.finish(); else sfx.boost();
+      if (completed >= prompts.length) { finalWpm = myWpm() ?? 0; stopWpmClock(); sfx.finish(); } else sfx.boost();
       render();
     } else if (phase === 'running') {
       sfx.error();
