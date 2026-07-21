@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "shipName": "Nebula Runner",
+=======
+  "shipName": "Deathstar",
+>>>>>>> b6ac115f6d29707cf5991188ad6e5d7e6a7c49ca
   "color": "#22d3ee",
   "shipModel": "fighter",
   "emblem": "comet"
