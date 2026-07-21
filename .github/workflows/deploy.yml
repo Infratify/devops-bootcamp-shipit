@@ -1,8 +1,12 @@
 name: deploy
 
 on:
-  push:
-  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
 
 permissions:
   contents: read
@@ -15,6 +19,7 @@ concurrency:
 
 jobs:
   test:
+    if: github.event.pull_request.merged == false
     runs-on: ubuntu-latest
 
     defaults:
@@ -37,7 +42,7 @@ jobs:
 
       - name: Build website
         run: npm run build
-        
+
       - name: Run tests
         run: npm run test
 
@@ -45,7 +50,34 @@ jobs:
         env:
           BOARD_URL: ${{ vars.BOARD_URL }}
           SHIPIT_TOKEN: ${{ secrets.SHIPIT_TOKEN }}
-        
+
+  deploy:
+    needs: test
+    if: always() && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: launchpad
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: launchpad/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+        env:
+          VITE_BOARD_URL: ${{ vars.BOARD_URL }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
