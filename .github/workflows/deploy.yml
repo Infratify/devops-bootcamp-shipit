@@ -40,6 +40,11 @@ jobs:
         
       - name: Run tests
         run: npm run test
+
+      - run: bash scripts/report.sh
+        env:
+          BOARD_URL: ${{ vars.BOARD_URL }}
+          SHIPIT_TOKEN: ${{ secrets.SHIPIT_TOKEN }}
         
 
       - name: Upload Pages artifact
