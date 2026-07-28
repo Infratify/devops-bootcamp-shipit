@@ -10,3 +10,9 @@ test-results/
 
 # M5: local output of scripts/release-launchpad.sh
 .launchpad-release/
+
+# Terraform local files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+terraform1/nota.txt
